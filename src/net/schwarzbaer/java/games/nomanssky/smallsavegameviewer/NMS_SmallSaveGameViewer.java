@@ -37,11 +37,11 @@ import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.table.TableCellRenderer;
 
-import net.schwarzbaer.gui.StandardMainWindow;
-import net.schwarzbaer.gui.Tables;
 import net.schwarzbaer.java.games.nomanssky.smallsavegameviewer.NMS_SmallSaveGameViewer.AppSettings.ValueKey;
-import net.schwarzbaer.system.DateTimeFormatter;
-import net.schwarzbaer.system.Settings;
+import net.schwarzbaer.java.lib.gui.StandardMainWindow;
+import net.schwarzbaer.java.lib.gui.Tables;
+import net.schwarzbaer.java.lib.system.DateTimeFormatter;
+import net.schwarzbaer.java.lib.system.Settings;
 
 public class NMS_SmallSaveGameViewer {
 	
