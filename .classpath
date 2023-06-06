@@ -6,6 +6,6 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/CommonLib_Essentials"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/JavaLib_Common_Essentials"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
