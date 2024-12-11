@@ -47,7 +47,7 @@ public class NMS_SmallSaveGameViewer {
 	
 	private static final String FILENAME_SLOT_DESCRIPTIONS = "NMS_SmallSaveGameViewer.SlotDescriptions.txt";
 	private static final AppSettings settings = new AppSettings();
-	private static final HashMap<Integer, String> slotDescriptions = new HashMap<Integer,String>();
+	private static final HashMap<Integer, String> slotDescriptions = new HashMap<>();
 	
 	public static void main(String[] args) {
 		try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); }
@@ -190,6 +190,7 @@ public class NMS_SmallSaveGameViewer {
 		System.out.printf("Scan Folder \"%s\" ...%n", saveGamesFolder);
 		Vector<SaveGame> saveGames = new Vector<>();
 		File[] files = saveGamesFolder.listFiles((FileFilter) File::isFile);
+		if (files==null) return;
 		System.out.printf("%d files found%n", files==null ? 0 : files.length);
 		for (File file : files) {
 			if (file==null    ) throw new IllegalStateException();
