@@ -7,5 +7,6 @@
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/JavaLib_Common_Essentials"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/JavaLib_JSON_Parser"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
