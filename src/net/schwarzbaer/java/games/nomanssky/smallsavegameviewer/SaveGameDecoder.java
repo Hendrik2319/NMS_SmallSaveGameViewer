@@ -38,6 +38,16 @@ class SaveGameDecoder
 			return null;
 		}
 		
+		return decodeFileContent(bytes, file.getAbsolutePath(), verboseLevel);
+	}
+
+	static byte[] decodeFileContent(byte[] bytes, String filepath)
+	{
+		return decodeFileContent(bytes, filepath, VERBOSE_LEVEL_Nothing);
+	}
+
+	static byte[] decodeFileContent(byte[] bytes, String filepath, int verboseLevel)
+	{
 		if (bytes.length == 0)
 		{
 			if (verboseLevel>=VERBOSE_LEVEL_Blocks_Only)
@@ -56,7 +66,7 @@ class SaveGameDecoder
 		{
 			if (verboseLevel==VERBOSE_LEVEL_Files_Only)
 				Gui.log(" is encoded");
-			bytes = decodeFileContent(bytes, file.getAbsolutePath(), verboseLevel);
+			bytes = decodeFileContent_intern(bytes, filepath, verboseLevel);
 		}
 		
 		if (verboseLevel>=VERBOSE_LEVEL_Blocks_Only)
@@ -67,7 +77,7 @@ class SaveGameDecoder
 		return bytes;
 	}
 
-	private static byte[] decodeFileContent(byte[] bytes, String filepath, int verboseLevel)
+	private static byte[] decodeFileContent_intern(byte[] bytes, String filepath, int verboseLevel)
 	{
 		RawBytesReader in = new RawBytesReader(bytes);
 		Output out = new Output(new OutputContext() {
@@ -119,7 +129,7 @@ class SaveGameDecoder
 		}
 		catch (ReadException | FormatException ex)
 		{
-			Gui.log_error_ln("%s occured while uncompressing file \"%s\" : %s", ex.getClass().getCanonicalName(), filepath, ex.getMessage());
+			Gui.log_error_ln("%s occured while decoding file \"%s\" : %s", ex.getClass().getCanonicalName(), filepath, ex.getMessage());
 			// ex.printStackTrace();
 			return null;
 		}

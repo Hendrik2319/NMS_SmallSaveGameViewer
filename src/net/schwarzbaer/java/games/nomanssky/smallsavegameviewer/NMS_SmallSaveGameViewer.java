@@ -21,6 +21,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Vector;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import javax.swing.JFileChooser;
@@ -40,6 +42,9 @@ import javax.swing.table.TableCellRenderer;
 import net.schwarzbaer.java.games.nomanssky.smallsavegameviewer.NMS_SmallSaveGameViewer.AppSettings.ValueKey;
 import net.schwarzbaer.java.lib.gui.StandardMainWindow;
 import net.schwarzbaer.java.lib.gui.Tables;
+import net.schwarzbaer.java.lib.jsonparser.JSON_Data;
+import net.schwarzbaer.java.lib.jsonparser.JSON_Data.TraverseException;
+import net.schwarzbaer.java.lib.jsonparser.JSON_Parser;
 import net.schwarzbaer.java.lib.system.DateTimeFormatter;
 import net.schwarzbaer.java.lib.system.Settings;
 
@@ -235,6 +240,9 @@ public class NMS_SmallSaveGameViewer {
 		public AppSettings() { super(NMS_SmallSaveGameViewer.class, ValueKey.values()); }
 	}
 	
+	private static class NV extends JSON_Data.NamedValueExtra.Dummy{}
+	private static class V extends JSON_Data.ValueExtra.Dummy{}
+	
 	private static class SaveGame {
 		
 		enum Type { Automatic, Manual }
@@ -246,13 +254,15 @@ public class NMS_SmallSaveGameViewer {
 		
 		private boolean isNewFormat = false;
 		private int header = 0;
-		private Integer version = null;
-		private Integer timeAlive = null;
-		private Integer totalPlayTime = null;
-		private Integer units = null;
-		private Integer nanites = null;
-		private Integer quicksilver = null;
+		private Long version = null;
+		private Long timeAlive = null;
+		private Long totalPlayTime = null;
+		private Long units = null;
+		private Long nanites = null;
+		private Long quicksilver = null;
 		private SaveGame slotSibling = null;
+		private String label = null;
+		private boolean parsed = false;
 		
 		SaveGame(File file, int fileNumber) {
 			this.file = file;
@@ -284,16 +294,70 @@ public class NMS_SmallSaveGameViewer {
 				startPos = 0;
 			}
 			
-			version       = findInteger(bytes,startPos,"F2P");
-			timeAlive     = findInteger(bytes,startPos,"i8O");
-			totalPlayTime = findInteger(bytes,startPos,"Lg8");
-			units         = findInteger(bytes,startPos,"wGS");
-			nanites       = findInteger(bytes,startPos,"7QL");
-			quicksilver   = findInteger(bytes,startPos,"kN;");
+			parsed = parseJSON(bytes);
 			
+			if (!parsed)
+			{
+				version       = findInteger(bytes,startPos,"F2P");
+				timeAlive     = findInteger(bytes,startPos,"i8O");
+				totalPlayTime = findInteger(bytes,startPos,"Lg8");
+				units         = findInteger(bytes,startPos,"wGS");
+				nanites       = findInteger(bytes,startPos,"7QL");
+				quicksilver   = findInteger(bytes,startPos,"kN;");
+			}
 		}
 
-		private Integer findInteger(byte[] bytes, int startPos, String label) {
+		private boolean parseJSON(byte[] bytes)
+		{
+			byte[] decodedBytes = SaveGameDecoder.decodeFileContent(bytes, file.getAbsolutePath());
+			if (decodedBytes==null)
+				return false;
+			
+			String json = new String(decodedBytes,StandardCharsets.UTF_8);
+			JSON_Data.Value<NV, V> base = JSON_Parser.parse(json, null, null);
+			if (base==null)
+				return false;
+			
+			// new Structure
+			parseSubNode(base, JSON_Data::getIntegerValue,  v-> version      =v, "F2P"            ); // [root].F2P
+			parseSubNode(base, JSON_Data::getIntegerValue,  v-> totalPlayTime=v, "<h0","Lg8"      ); // [root].<h0.Lg8
+			parseSubNode(base, JSON_Data::getStringValue ,  v-> label        =v, "<h0","Pk4"      ); // [root].<h0.Pk4
+			for (String str : new String[]{"vLc", "2YS"} )
+			{
+				parseSubNode(base, JSON_Data::getIntegerValue,  v-> timeAlive    =v, str,"6f=","i8O"); // [root].vLc.6f=.i8O
+				parseSubNode(base, JSON_Data::getIntegerValue,  v-> units        =v, str,"6f=","wGS"); // [root].vLc.6f=.wGS
+				parseSubNode(base, JSON_Data::getIntegerValue,  v-> nanites      =v, str,"6f=","7QL"); // [root].vLc.6f=.7QL
+				parseSubNode(base, JSON_Data::getIntegerValue,  v-> quicksilver  =v, str,"6f=","kN;"); // [root].vLc.6f=.kN;
+			}
+			
+			// known Structure
+			//parseSubNode(base, JSON_Data::getIntegerValue,  v-> version      =v, "F2P"            ); // [root].F2P
+			parseSubNode(base, JSON_Data::getIntegerValue,  v-> timeAlive    =v,       "6f=","i8O"); // [root].6f=.i8O 
+			parseSubNode(base, JSON_Data::getIntegerValue,  v-> totalPlayTime=v, "6f=","Lg8"      ); // [root].6f=.Lg8
+			parseSubNode(base, JSON_Data::getIntegerValue,  v-> units        =v,       "6f=","wGS"); // [root].6f=.wGS
+			parseSubNode(base, JSON_Data::getIntegerValue,  v-> nanites      =v,       "6f=","7QL"); // [root].6f=.7QL
+			parseSubNode(base, JSON_Data::getIntegerValue,  v-> quicksilver  =v,       "6f=","kN;"); // [root].6f=.kN;
+			
+			return true;
+		}
+
+		private <ResultType> void parseSubNode(JSON_Data.Value<NV, V> value, Function<JSON_Data.Value<NV, V>, ResultType> convert, Consumer<ResultType> nextStep, Object... path)
+		{
+			try
+			{
+				JSON_Data.Value<NV, V> subNode = JSON_Data.getSubNode(value, path);
+				if (subNode==null) return;
+				ResultType result = convert.apply(subNode);
+				nextStep.accept(result);
+			}
+			catch (TraverseException e)
+			{
+				//System.err.printf("TraverseException: %s%n",e.getMessage());
+				// e.printStackTrace();
+			}
+		}
+
+		private Long findInteger(byte[] bytes, int startPos, String label) {
 			int pos = findPos(bytes, startPos, label);
 			if (pos<0) return null;
 			
@@ -314,7 +378,7 @@ public class NMS_SmallSaveGameViewer {
 			}
 			if (numberStr.isEmpty()) return null;
 			
-			try { return Integer.parseInt(numberStr); }
+			try { return Long.parseLong(numberStr); }
 			catch (NumberFormatException e) { return null; }
 		}
 
@@ -411,6 +475,8 @@ public class NMS_SmallSaveGameViewer {
 			Type         ("Type"         , SaveGame.Type.class,  65, Alignment.Center),
 			Header       ("Header"       ,        String.class,  80),
 			NewFormat    ("New Format"   ,       Boolean.class,  75),
+			Parsed       ("Parsed"       ,       Boolean.class,  45),
+			Label        ("Label"        ,        String.class, 150, Alignment.Left),
 			Version      ("Version"      ,       Integer.class,  50),
 			TimeAlive    ("TimeAlive"    ,        String.class,  75),
 			TotalPlayTime("TotalPlayTime",        String.class,  85),
@@ -511,6 +577,8 @@ public class NMS_SmallSaveGameViewer {
 			case Type         : return row.type;
 			case Header       : return String.format("0x%08X", row.header);
 			case NewFormat    : return row.isNewFormat;
+			case Parsed       : return row.parsed; 
+			case Label        : return row.label;
 			case Version      : return row.version;
 			case TimeAlive    : return toTimeStr(row.timeAlive);
 			case TotalPlayTime: return toTimeStr(row.totalPlayTime);
@@ -553,9 +621,8 @@ public class NMS_SmallSaveGameViewer {
 			return dateTimeFormatter.getTimeStr(time_ms, false, true, false, true, false);
 		}
 
-		private static String toTimeStr(Integer time_s) {
-			if (time_s==null) return null;
-			return DateTimeFormatter.getDurationStr(time_s.longValue());
+		private static String toTimeStr(Long time_s) {
+			return time_s==null ? null : DateTimeFormatter.getDurationStr(time_s.longValue());
 		}
 	
 	}
