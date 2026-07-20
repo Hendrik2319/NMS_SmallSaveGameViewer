@@ -496,7 +496,6 @@ public class NMS_SmallSaveGameViewer {
 			@Override public Tables.SimplifiedColumnConfig getColumnConfig() { return config; }
 		}
 
-		private static final DateTimeFormatter dateTimeFormatter = new DateTimeFormatter();
 		private Vector<SaveGame> data;
 
 		SaveGameTableModel() {
@@ -618,7 +617,7 @@ public class NMS_SmallSaveGameViewer {
 		}
 
 		private static String toDateStr(long time_ms) {
-			return dateTimeFormatter.getTimeStr(time_ms, false, true, false, true, false);
+			return DateTimeFormatter.getTimeStr(time_ms, false, true, false, true, false);
 		}
 
 		private static String toTimeStr(Long time_s) {
